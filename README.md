@@ -2,6 +2,8 @@
 
 A Julia package for multi-location time series of physical quantities (water levels, wave heights, wind speed, etc.).
 
+> **Note:** This package was written for internal research use and provides a minimal interface tailored to multi-location hydrodynamic data. For general-purpose time series work in Julia, the standard choice is [TimeSeries.jl](https://github.com/JuliaStats/TimeSeries.jl).
+
 ## Features
 
 - In-memory `TimeSeries` struct with locations × time layout
