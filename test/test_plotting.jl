@@ -85,3 +85,52 @@ end
     p  = Plots.plot(ts; size=(800, 400), dpi=150)
     save_and_check(p, "ts_custom_size")
 end
+
+# ── scatter plots ─────────────────────────────────────────────────────────────
+
+@testset "scatter(obs, model): single location" begin
+    obs   = make_plot_ts_single()
+    model = make_plot_ts_single()
+    p     = Plots.scatter(obs, model)
+    @test p isa Plots.Plot
+    save_and_check(p, "scatter_single")
+end
+
+@testset "scatter(obs, model): location_index selects one location" begin
+    obs   = make_plot_ts_two()
+    model = make_plot_ts_two()
+    p1    = Plots.scatter(obs, model; location_index=1)
+    @test p1 isa Plots.Plot
+    save_and_check(p1, "scatter_loc1")
+
+    p2 = Plots.scatter(obs, model; location_index=2)
+    @test p2 isa Plots.Plot
+    save_and_check(p2, "scatter_loc2")
+end
+
+@testset "scatter(obs, model): unit keyword" begin
+    obs   = make_plot_ts_single()
+    model = make_plot_ts_single()
+    p     = Plots.scatter(obs, model; unit="m")
+    @test p isa Plots.Plot
+    save_and_check(p, "scatter_unit")
+end
+
+@testset "scatter(obs, model): NaN values are skipped" begin
+    N     = 10
+    dt_s  = 3600.0
+    t0    = DateTime(2020, 1, 1)
+    times = [t0 + Millisecond(round(Int, dt_s * 1000 * (i-1))) for i in 1:N]
+    v_obs = Float32.([1, 2, NaN, 4, 5, 6, 7, 8, 9, 10])
+    v_mod = Float32.([1, 2, 3,   4, 5, 6, 7, 8, 9, NaN])
+    obs   = TimeSeries(reshape(v_obs, 1, N), times, ["S1"], [0.0], [0.0], "level", "test")
+    model = TimeSeries(reshape(v_mod, 1, N), times, ["S1"], [0.0], [0.0], "level", "test")
+    p     = Plots.scatter(obs, model)   # must not error
+    @test p isa Plots.Plot
+end
+
+@testset "scatter(obs, model): out-of-range location_index errors" begin
+    obs   = make_plot_ts_single()
+    model = make_plot_ts_single()
+    @test_throws ErrorException Plots.scatter(obs, model; location_index=2)
+end

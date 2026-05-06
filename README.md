@@ -81,15 +81,22 @@ Time steps where either series contains `NaN` are excluded automatically.
 
 ## Plotting
 
-`Plots.plot` is extended for `AbstractTimeSeries` when [Plots.jl](https://docs.juliaplots.org/) is loaded. It plots one location at a time, selected by `location_index`.
+`Plots.plot` and `Plots.scatter` are extended for `AbstractTimeSeries` when [Plots.jl](https://docs.juliaplots.org/) is loaded. Both plot one location at a time, selected by `location_index`.
 
 ```julia
 using MultiTimeSeries, Plots
 
+# Time series line plot
 p = Plots.plot(ts)                          # first location
 p = Plots.plot(ts; location_index=2)        # second location
 p = Plots.plot(ts; yunit="m", size=(900,300))
+
+# Observed vs modelled scatter plot (includes 1:1 reference line)
+p = Plots.scatter(obs, model)
+p = Plots.scatter(obs, model; location_index=2, unit="m")
 ```
+
+`Plots.scatter` skips time steps where either series contains `NaN` and draws a dashed 1:1 line for reference.
 
 ## Supported formats
 
