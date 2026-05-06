@@ -8,6 +8,9 @@ using JLD2
 using Rasters, ZarrDatasets, NCDatasets
 using Minio, AWS
 using URIs
+using Statistics
+using DataFrames
+import Plots
 
 # ── abstract types (must precede includes) ────────────────────────────────────
 abstract type AbstractTimeSeries end
@@ -19,6 +22,8 @@ include("series_donar.jl")
 include("series_netcdf.jl")
 include("series_zarr.jl")
 include("series_jld2.jl")
+include("statistics.jl")
+include("plotting.jl")
 
 # ── exports ───────────────────────────────────────────────────────────────────
 
@@ -57,5 +62,8 @@ export ZarrTimeSeries, has_aws_credentials
 
 # JLD2 I/O
 export JLD2TimeSeries, write_to_jld2
+
+# statistics
+export compute_statistics
 
 end # module MultiTimeSeries

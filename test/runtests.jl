@@ -1,7 +1,10 @@
 
 using Test
 using Dates
+using DataFrames
 using MultiTimeSeries
+import Plots
+Plots.gr()
 
 const TEST_DATA_DIR = joinpath(@__DIR__, "..", "test_data")
 temp_dir = mktempdir()
@@ -38,6 +41,14 @@ temp_dir = mktempdir()
 
    @testset "NOOS time series: VLISSGN" begin
       include("test_series_noos_vlissgn.jl")
+   end
+
+   @testset "Statistics" begin
+      include("test_statistics.jl")
+   end
+
+   @testset "Plotting" begin
+      include("test_plotting.jl")
    end
 
 end
