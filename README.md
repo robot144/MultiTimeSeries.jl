@@ -10,6 +10,8 @@ A Julia package for multi-location time series of physical quantities (water lev
 - Read/write support for NOOS, DONAR, NetCDF, Zarr, and JLD2 formats
 - Selection by location (index or name) and by time span
 - Merging by time or by location
+- Per-station validation statistics (bias, RMSE, MAE, …)
+- Time-series plotting via [Plots.jl](https://docs.juliaplots.org/)
 
 ## Installation
 
@@ -61,6 +63,33 @@ Values are stored as `Matrix{Float32}` with rows = locations and columns = time 
 | `latitudes` | `Vector{Float64}` | station latitudes |
 | `quantity` | `String` | physical quantity |
 | `source` | `String` | data provenance |
+
+## Statistics
+
+`compute_statistics` compares a model `TimeSeries` against observations and returns a `DataFrame` with one row per station. Both series must share the same time axis and location names; use `select_timespan` / `merge_by_times` to align them first.
+
+```julia
+using MultiTimeSeries, DataFrames
+
+stats = compute_statistics(obs, model)
+# => DataFrame with columns:
+#    location_id, location_name, n_values,
+#    signal_rmse, bias, rmse, mae, max_error, min_error
+```
+
+Time steps where either series contains `NaN` are excluded automatically.
+
+## Plotting
+
+`Plots.plot` is extended for `AbstractTimeSeries` when [Plots.jl](https://docs.juliaplots.org/) is loaded. It plots one location at a time, selected by `location_index`.
+
+```julia
+using MultiTimeSeries, Plots
+
+p = Plots.plot(ts)                          # first location
+p = Plots.plot(ts; location_index=2)        # second location
+p = Plots.plot(ts; yunit="m", size=(900,300))
+```
 
 ## Supported formats
 
