@@ -29,55 +29,41 @@ function JLD2TimeSeries(filename::String; varname="values")
     if !isfile(filename)
         error("JLD2 file $(filename) does not exist.")
     end
-    # read the JLD2 file
-    d=load(filename)
-    # Check for variables in the JLD2 file
-    if !haskey(d, varname)
-        error("JLD2 file $(filename) does not contain the $(varname) key")
-    end
-    if !haskey(d, "quantity")
-        @warn "JLD2 file $(filename) does not contain key for variable description. Using name $varname"
-        quantity = varname
-    else
-        quantity = d["quantity"]
-    end
-
-    data= d[varname][:, :] #load the data into memory
-    if !haskey(d,"source")
-        source = "JLD2 file: $(filename)"
-    else
-        source = d["source"]
-    end
-    if !haskey(d,"times")
-        error("JLD2 file $(filename) does not contain the 'times' key.")
-    end
-    times = d["times"]
-
-    nstations = length(data)÷length(times)
-    names = []
-    if !haskey(d,"station_names")
-        if !haskey(d,"names")
-            @warn "JLD2 file $(filename) does not contain a key for station names. Generating station names based on detected $nstations stations."
-            names = ["station_$i" for i in 1:nstations]
-        else
-            # names_key = "names"
-            names = d["names"]
+    # Read only the keys we need, avoiding loading unrelated variables in multi-variable files.
+    jldopen(filename, "r") do d
+        if !haskey(d, varname)
+            error("JLD2 file $(filename) does not contain the $(varname) key")
         end
-    else
-        names = d["station_names"]
+        if !haskey(d, "quantity")
+            @warn "JLD2 file $(filename) does not contain key for variable description. Using name $varname"
+            quantity = varname
+        else
+            quantity = d["quantity"]
+        end
+
+        data = d[varname][:, :]
+        source = haskey(d, "source") ? d["source"] : "JLD2 file: $(filename)"
+
+        if !haskey(d, "times")
+            error("JLD2 file $(filename) does not contain the 'times' key.")
+        end
+        times = d["times"]
+
+        nstations = length(data) ÷ length(times)
+        names = if haskey(d, "station_names")
+            d["station_names"]
+        elseif haskey(d, "names")
+            d["names"]
+        else
+            @warn "JLD2 file $(filename) does not contain a key for station names. Generating station names based on detected $nstations stations."
+            ["station_$i" for i in 1:nstations]
+        end
+
+        longitudes = haskey(d, "station_x_coordinate") ? d["station_x_coordinate"] : zeros(Float64, nstations)
+        latitudes  = haskey(d, "station_y_coordinate") ? d["station_y_coordinate"] : zeros(Float64, nstations)
+
+        return TimeSeries(data, times, names, longitudes, latitudes, quantity, source)
     end
-    if haskey(d,"station_x_coordinate")
-        longitudes = d["station_x_coordinate"]
-    else
-        longitudes = zeros(Float64, nstations)
-    end
-    if haskey(d,"station_y_coordinate")
-        latitudes = d["station_y_coordinate"]
-    else
-        latitudes = zeros(Float64, nstations)
-    end
-    # Create in-memory TimeSeries object and return 
-    return TimeSeries(data, times, names, longitudes, latitudes, quantity, source)
 end
 
 """Write a TimeSeries to a JLD2 file.
