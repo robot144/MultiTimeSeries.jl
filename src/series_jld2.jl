@@ -19,6 +19,7 @@ The JLD2 file should contain the following keys:
 - `quantity`: a String representing the physical quantity measured (e.g., "waterlevel")
 - `<values>`: a matrix of Float32 values with rows as stations and columns as time steps. The name should match the `quantity` key, e.g., "waterlevel".
 - `source`: a String representing the source of the data (optional, defaults to "JLD2 file: <filename>")
+- varname can be set to another variable name in the JLD2 files. This is meant to allow reading from an older version of the file format. In this case the quatity will be set to varname.
 """
 function JLD2TimeSeries(filename::String; varname="values")
     # Does the file have jld2 extension?
@@ -30,18 +31,28 @@ function JLD2TimeSeries(filename::String; varname="values")
         error("JLD2 file $(filename) does not exist.")
     end
     # Read only the keys we need, avoiding loading unrelated variables in multi-variable files.
+    varname_is_values = (varname == "values")
     jldopen(filename, "r") do d
         if !haskey(d, varname)
             error("JLD2 file $(filename) does not contain the $(varname) key")
         end
-        if !haskey(d, "quantity")
-            @warn "JLD2 file $(filename) does not contain key for variable description. Using name $varname"
-            quantity = varname
-        else
-            quantity = d["quantity"]
-        end
+	if varname_is_values
+           if haskey(d, "quantity")
+               quantity = d["quantity"]
+           else
+               @warn "JLD2 file $(filename) does not contain key for variable description. Using name $varname"
+               quantity = "unknown_quantity"
+           end
+	else # non-standard varname
+           if haskey(d, "quantity")
+               quantity = d["quantity"]
+           else
+               quantity = varname
+           end
+	end
 
         data = d[varname][:, :]
+
         source = haskey(d, "source") ? d["source"] : "JLD2 file: $(filename)"
 
         if !haskey(d, "times")
@@ -49,7 +60,9 @@ function JLD2TimeSeries(filename::String; varname="values")
         end
         times = d["times"]
 
-        nstations = length(data) ÷ length(times)
+        #nstations = length(data) ÷ length(times)
+	nstations = size(data,1)
+
         names = if haskey(d, "station_names")
             d["station_names"]
         elseif haskey(d, "names")
