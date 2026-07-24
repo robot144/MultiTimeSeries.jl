@@ -224,11 +224,11 @@ end
     @test issorted(q.qx)
 end
 
-@testset "qq! custom probs + drawn onto a fresh plot" begin
+@testset "qq! overlays onto an existing scatter (clean overlay)" begin
     obs, model = make_scatter_pair(300)
-    p = Plots.plot()
+    p = Plots.scatter(obs, model)          # host supplies axes + 1:1 line
     q = qq!(p, obs, model; probs=[0.25, 0.5, 0.75])
     @test q.probs == [0.25, 0.5, 0.75]
     @test length(q.qx) == 3
-    save_and_check(p, "qq_custom")
+    save_and_check(p, "scatter_with_qq")
 end

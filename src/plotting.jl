@@ -192,41 +192,34 @@ function linear_fit!(p::Plots.Plot, obs::AbstractTimeSeries, model::AbstractTime
 end
 
 """
-    qq!(p, obs, model; location_index=1, probs=[0.01,0.10,0.50,0.90,0.99], unit="", color=:purple, dotcolor=:orange) -> (; probs, qx, qy)
+    qq!(p, obs, model; location_index=1, probs=[0.01,0.10,0.50,0.90,0.99], color=:purple, dotcolor=:orange) -> (; probs, qx, qy)
 
-Draw a quantile-quantile curve `sort(obs)` vs `sort(model)` on plot `p`, with a
-dashed 1:1 line and percentile dots labelled inline `pct: obs→pred`. Sets equal
-aspect, square limits and quantile axis labels, so it can be drawn onto a fresh
-`Plots.plot()`. Compares the marginal distributions (unpaired), unlike the paired
-`scatter`. Returns the percentile probabilities and their observed/modelled
-quantiles. NaN pairs are excluded.
+Overlay a quantile-quantile curve `sort(obs)` vs `sort(model)` on plot `p`, with
+percentile dots labelled inline `pct: obs→pred`. Compares the marginal
+distributions (unpaired), unlike the paired `scatter`.
+
+Like `linear_fit!`, this is a clean overlay: it adds only the Q-Q curve and the
+percentile dots and leaves the axis labels, limits and any 1:1 reference line to
+the host plot (typically a `scatter`). Returns the percentile probabilities and
+their observed/modelled quantiles. NaN pairs are excluded.
 """
 function qq!(p::Plots.Plot, obs::AbstractTimeSeries, model::AbstractTimeSeries;
              location_index::Integer = 1,
              probs = [0.01, 0.10, 0.50, 0.90, 0.99],
-             unit::String = "",
              color = :purple, dotcolor = :orange)
     x, y = _paired_valid_values(obs, model, location_index)
     isempty(x) && error("qq!: no valid (non-NaN) pairs.")
 
-    qty   = get_quantity(obs)
-    axlbl = isempty(unit) ? qty : "$qty ($unit)"
-    lim   = _square_limits(x, y)
-
-    Plots.plot!(p, sort(x), sort(y); label = "Q-Q", color = color, linewidth = 2,
-        xlabel = "Observed $axlbl quantile", ylabel = "Modelled $axlbl quantile",
-        xlims = lim, ylims = lim, aspect_ratio = :equal, legend = :topleft,
-        bottom_margin = 5mm, left_margin = 5mm)
-    Plots.plot!(p, collect(lim), collect(lim);
-        label = "1:1", color = :black, linestyle = :dash)
+    Plots.plot!(p, sort(x), sort(y); label = "Q-Q", color = color, linewidth = 2)
 
     qx = quantile(x, probs)
     qy = quantile(y, probs)
     Plots.scatter!(p, qx, qy; label = "percentiles", color = dotcolor,
         markersize = 6, markerstrokewidth = 1, markerstrokecolor = :black)
 
-    dx = 0.025 * (lim[2] - lim[1])
-    dy = 0.025 * (lim[2] - lim[1])
+    lim = _square_limits(x, y)
+    dx  = 0.025 * (lim[2] - lim[1])
+    dy  = 0.025 * (lim[2] - lim[1])
     for i in eachindex(probs)
         lbl = @sprintf("%g%%: %.2f→%.2f", 100 * probs[i], qx[i], qy[i])
         Plots.annotate!(p, qx[i] + dx, qy[i] - dy, Plots.text(lbl, :left, :top, 8))
