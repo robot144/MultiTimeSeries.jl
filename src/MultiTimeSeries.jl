@@ -66,4 +66,7 @@ export JLD2TimeSeries, write_to_jld2
 # statistics
 export compute_statistics
 
+# plotting overlays (scatter/plot extend Plots and are used as Plots.scatter/plot)
+export linear_fit!, qq!
+
 end # module MultiTimeSeries

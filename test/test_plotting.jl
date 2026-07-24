@@ -134,3 +134,101 @@ end
     model = make_plot_ts_single()
     @test_throws ErrorException Plots.scatter(obs, model; location_index=2)
 end
+
+# ── density modes / linear_fit! / qq! ───────────────────────────────────────────
+
+"""Single-location (obs, model≈0.9·obs+noise) pair of length `N` (deterministic)."""
+function make_scatter_pair(N)
+    t0    = DateTime(2020, 1, 1)
+    times = [t0 + Hour(i-1) for i in 1:N]
+    o     = Float32.(sin.(2π .* (0:N-1) ./ 37))
+    m     = Float32.(0.9 .* o .+ 0.05 .* cos.(2π .* (0:N-1) ./ 13))
+    obs   = TimeSeries(reshape(o, 1, N), times, ["S1"], [0.0], [0.0], "level", "obs")
+    model = TimeSeries(reshape(m, 1, N), times, ["S1"], [0.0], [0.0], "level", "model")
+    return obs, model
+end
+
+@testset "scatter density = :points" begin
+    obs, model = make_scatter_pair(500)
+    p = Plots.scatter(obs, model; density=:points)
+    @test p isa Plots.Plot
+    save_and_check(p, "scatter_points")
+end
+
+@testset "scatter density = :heatmap" begin
+    obs, model = make_scatter_pair(500)
+    p = Plots.scatter(obs, model; density=:heatmap, nbins=50)
+    @test p isa Plots.Plot
+    save_and_check(p, "scatter_heatmap")
+end
+
+@testset "scatter density = :density_points" begin
+    obs, model = make_scatter_pair(500)
+    p = Plots.scatter(obs, model; density=:density_points, nbins=50)
+    @test p isa Plots.Plot
+    save_and_check(p, "scatter_density_points")
+end
+
+@testset "scatter density = :auto switches on point count" begin
+    small_o, small_m = make_scatter_pair(200)
+    large_o, large_m = make_scatter_pair(12_000)
+    @test Plots.scatter(small_o, small_m; density=:auto) isa Plots.Plot         # → points
+    @test Plots.scatter(large_o, large_m; density=:auto, nbins=80) isa Plots.Plot  # → heatmap
+end
+
+@testset "scatter unknown density mode errors" begin
+    obs, model = make_scatter_pair(50)
+    @test_throws ErrorException Plots.scatter(obs, model; density=:nope)
+end
+
+@testset "linear_fit! identity ⇒ slope≈1, offset≈0, r≈1, bias≈0" begin
+    obs   = make_plot_ts_single()
+    model = make_plot_ts_single()          # identical ⇒ perfect fit
+    p  = Plots.scatter(obs, model)
+    st = linear_fit!(p, obs, model)
+    @test st.slope  ≈ 1.0 atol=1e-6
+    @test st.offset ≈ 0.0 atol=1e-6
+    @test st.r      ≈ 1.0 atol=1e-6
+    @test st.bias   ≈ 0.0 atol=1e-6
+    save_and_check(p, "scatter_fit")
+end
+
+@testset "linear_fit! recovers a known slope/offset/bias" begin
+    N = 200
+    t0 = DateTime(2020, 1, 1); times = [t0 + Hour(i-1) for i in 1:N]
+    o = Float32.(range(-2, 2; length=N))
+    m = Float32.(0.5 .* o .+ 0.3)           # slope 0.5, offset 0.3, no noise
+    obs   = TimeSeries(reshape(o, 1, N), times, ["S1"], [0.0], [0.0], "level", "obs")
+    model = TimeSeries(reshape(m, 1, N), times, ["S1"], [0.0], [0.0], "level", "model")
+    p  = Plots.scatter(obs, model)
+    st = linear_fit!(p, obs, model; stats=false)
+    @test st.slope  ≈ 0.5 atol=1e-4
+    @test st.offset ≈ 0.3 atol=1e-4
+    @test st.bias   ≈ sum(m .- o) / N atol=1e-4
+end
+
+@testset "linear_fit! on constant observations errors" begin
+    N = 10; t0 = DateTime(2020, 1, 1); times = [t0 + Hour(i-1) for i in 1:N]
+    o = fill(1.0f0, N); m = Float32.(collect(1:N))
+    obs   = TimeSeries(reshape(o, 1, N), times, ["S1"], [0.0], [0.0], "level", "obs")
+    model = TimeSeries(reshape(m, 1, N), times, ["S1"], [0.0], [0.0], "level", "model")
+    @test_throws ErrorException linear_fit!(Plots.plot(), obs, model)
+end
+
+@testset "qq! identity ⇒ qx≈qy, sorted, returns default probs" begin
+    obs   = make_plot_ts_single()
+    model = make_plot_ts_single()
+    q = qq!(Plots.plot(), obs, model)
+    @test q.probs == [0.01, 0.10, 0.50, 0.90, 0.99]
+    @test q.qx ≈ q.qy atol=1e-6
+    @test issorted(q.qx)
+end
+
+@testset "qq! custom probs + drawn onto a fresh plot" begin
+    obs, model = make_scatter_pair(300)
+    p = Plots.plot()
+    q = qq!(p, obs, model; probs=[0.25, 0.5, 0.75])
+    @test q.probs == [0.25, 0.5, 0.75]
+    @test length(q.qx) == 3
+    save_and_check(p, "qq_custom")
+end
